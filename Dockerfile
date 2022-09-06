@@ -11,9 +11,9 @@ RUN wget --progress=dot:giga https://repo.anaconda.com/miniconda/Miniconda3-py38
  && bash ~/miniconda.sh -b -p $HOME/miniconda \
  && $HOME/miniconda/bin/conda init
 
-COPY . /root/stable-diffusion
+COPY . /root/prs
 
-WORKDIR /root/stable-diffusion
+WORKDIR /root/prs
 
 RUN eval "$($HOME/miniconda/bin/conda shell.bash hook)" \
  && conda env create -f environment.yaml \
@@ -29,11 +29,11 @@ ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV GRADIO_SERVER_PORT=7860
 EXPOSE 7860
 
-RUN ln -s /data /root/stable-diffusion/models \
- && mkdir -p /output /root/stable-diffusion/out \
- && ln -s /output /root/stable-diffusion/out
+RUN ln -s /data /root/prs/models \
+ && mkdir -p /output /root/prs/out \
+ && ln -s /output /root/prs/out
 
-WORKDIR /root/stable-diffusion
+WORKDIR /root/prs
 
-ENTRYPOINT ["/root/stable-diffusion/docker-bootstrap.sh"]
+ENTRYPOINT ["/root/prs/docker-bootstrap.sh"]
 CMD python prs.py
