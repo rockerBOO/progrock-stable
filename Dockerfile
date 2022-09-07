@@ -23,17 +23,20 @@ RUN eval "$($HOME/miniconda/bin/conda shell.bash hook)" \
 VOLUME /root/.cache
 VOLUME /data
 VOLUME /output
+VOLUME /settings.json
+VOLUME /psr.py
 
 ENV PYTHONUNBUFFERED=1
 ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV GRADIO_SERVER_PORT=7860
 EXPOSE 7860
 
+RUN rm /root/prs/settings.json && ln -s /settings.json /root/prs/settings.json
+RUN rm /root/prs/prs.py && ln -s /prs.py /root/prs/prs.py
+
 RUN ln -s /data /root/prs/models \
  && mkdir -p /output /root/prs/out \
  && ln -s /output /root/prs/out
-
-WORKDIR /root/prs
 
 ENTRYPOINT ["/root/prs/docker-bootstrap.sh"]
 CMD python prs.py

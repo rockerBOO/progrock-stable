@@ -8,6 +8,8 @@ services:
       - ../sd-data:/data
       - ../sd-output:/output
       - sd-cache:/root/.cache
+      - ./settings/my_settings.json:/settings.json
+      - ./prs.py:/prs.py
     deploy:
       resources:
         reservations:
