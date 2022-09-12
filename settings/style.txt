@@ -61,3 +61,7 @@ volumetric lighting
 storybook illustration
 parallax
 dutch golden age
+art deco
+rococo
+art nouveau
+baroque 

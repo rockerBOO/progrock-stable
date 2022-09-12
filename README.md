@@ -140,6 +140,19 @@ In the file, in layer_norm(), change "input" to "input.contiguous()" here:
     return torch.layer_norm(input.contiguous(), ...
 ```
 
+## Docker Container
+
+`gobig_realesrgan` option not working on the docker container due to the following errors. Vulkan in the container doesn't seem to be able to access the GPU device so maybe some setting to make this viable.
+
+```
+prs-prs-1  | vkCreateInstance failed -9
+prs-prs-1  | vkCreateInstance failed -9
+prs-prs-1  | vkCreateInstance failed -9
+prs-prs-1  | invalid gpu device
+prs-prs-1  | ESRGAN resize failed. Make sure realesrgan-ncnn-vulkan is in your path (or in this directory)
+prs-prs-1  | [Errno 2] No such file or directory: '_esrgan_.png'
+```
+
 # About Stable Diffusion
 *Stable Diffusion was made possible thanks to a collaboration with [Stability AI](https://stability.ai/) and [Runway](https://runwayml.com/) and builds upon our previous work:*
 

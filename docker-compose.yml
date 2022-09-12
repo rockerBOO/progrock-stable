@@ -1,14 +1,14 @@
+---
 version: "3.9"
 services:
   prs:
     build: .
-    ports:
-      - "7860:7860"
     volumes:
       - ../sd-data:/data
       - ../sd-output:/output
       - sd-cache:/root/.cache
-      - ./settings/my_settings.json:/settings.json
+      - ./settings:/settings
+      - ./settings/my_settings.json:/settings/user_settings.json
       - ./prs.py:/prs.py
     deploy:
       resources:

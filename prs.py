@@ -1,7 +1,7 @@
 import argparse, os, sys, glob
 import random
 import shutil
-from tkinter import E
+# from tkinter import E
 import torch
 from torch import nn
 from torch import Tensor
@@ -225,7 +225,7 @@ def do_run(device, model, opt):
                         # process the prompt for randomizers and dynamic values
                         newprompts = []
                         for prompt in prompts:
-                            prompt = randomize_prompt(prompt)
+                            prompt = randomize_prompt(prompt, opt.settings_dir)
                             prompt = dynamic_value(prompt)
                             newprompts.append(prompt)
                         prompts = newprompts
@@ -599,22 +599,22 @@ def is_json_key_present(json, key, subkey="none"):
     return True
 
 # pick a random item from the cooresponding text file
-def randomizer(category):
+def randomizer(category, settings_dir='settings/'):
     random.seed()
     randomizers = []
-    with open(f'settings/{category}.txt', encoding="utf-8") as f:
+    with open(f'{settings_dir}/{category}.txt', encoding="utf-8") as f:
         for line in f:
             randomizers.append(line.strip())
     random_item = random.choice(randomizers)
     return(random_item)
 
 # replace anything surrounded by underscores with a random entry from the matching text file
-def randomize_prompt(prompt):
+def randomize_prompt(prompt, settings_dir='settings/'):
     while "_" in prompt:
         start = prompt.index('_')
         end = prompt.index('_', start+1)
         swap = prompt[(start + 1):end]
-        swapped = randomizer(swap)
+        swapped = randomizer(swap, settings_dir)
         prompt = prompt.replace(f'_{swap}_', swapped, 1)
     return prompt
 
@@ -679,11 +679,13 @@ class Settings:
     gobig_realesrgan = False
     gobig_keep_slices = False
     esrgan_model = "realesrgan-x4plus"
+    esrgan_exe = "realesrgan-ncnn-vulkan"
     cool_down = 0.0
     checkpoint = "./models/sd-v1-4.ckpt"
     use_jpg = False
     hide_metadata = False
     method = "k_lms"
+    settings_dir = "settings/"
     save_settings = False
     
     def apply_settings_file(self, filename, settings_file):
@@ -740,6 +742,8 @@ class Settings:
             self.gobig_realesrgan = (settings_file["gobig_realesrgan"])
         if is_json_key_present(settings_file, 'esrgan_model'):
             self.esrgan_model = (settings_file["esrgan_model"])
+        if is_json_key_present(settings_file, 'esrgan_exe'):
+            self.esrgan_exe = (settings_file["esrgan_exe"])
         if is_json_key_present(settings_file, 'gobig_keep_slices'):
             self.gobig_keep_slices = (settings_file["gobig_keep_slices"])
         if is_json_key_present(settings_file, 'cool_down'):
@@ -752,6 +756,8 @@ class Settings:
             self.hide_metadata = (settings_file["hide_metadata"])
         if is_json_key_present(settings_file, 'method'):
             self.method = (settings_file["method"])
+        if is_json_key_present(settings_file, 'settings_dir'):
+            self.settings_dir = (settings_file["settings_dir"])
         if is_json_key_present(settings_file, 'save_settings'):
             self.save_settings = (settings_file["save_settings"])
 
@@ -786,12 +792,12 @@ def save_settings(options, prompt, filenum):
     with open(f"{options.outdir}/{options.batch_name}-{filenum:04}.json",  "w+", encoding="utf-8") as f:
         json.dump(setting_list, f, ensure_ascii=False, indent=4)
 
-def esrgan_resize(input, id, esrgan_model='realesrgan-x4plus'):
+def esrgan_resize(input, id, esrgan_model='realesrgan-x4plus', esrgan_exe='realesran-ncnn-vulkan'):
     input.save(f'_esrgan_orig{id}.png')
     input.close()
     try:
         subprocess.run(
-            ['realesrgan-ncnn-vulkan', '-n', esrgan_model, '-i', '_esrgan_orig.png', '-o', '_esrgan_.png'],
+            [esrgan_exe, '-n', esrgan_model, '-i', '_esrgan_orig.png', '-o', '_esrgan_.png'],
             stdout=subprocess.PIPE
         ).stdout.decode('utf-8')
         output = Image.open('_esrgan_.png').convert('RGBA')
@@ -806,17 +812,18 @@ def do_gobig(gobig_init, device, model, opt):
     outpath = opt.outdir
     # get our render size for each slice, and our target size
     input_image = Image.open(gobig_init).convert('RGBA')
-    if opt.gobig_prescaled == False:
-        opt.W, opt.H = input_image.size
-        target_W = opt.W * opt.gobig_scale
-        target_H = opt.H * opt.gobig_scale
-        if opt.gobig_realesrgan:
-            input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model)
-        target_image = input_image.resize((target_W, target_H), get_resampling_mode()) #esrgan resizes 4x by default, so this brings us in line with our actual scale target
-    else:
-        #target_W, target_H = input_image.size
-        target_image = input_image
-    slices, target_image = grid_slice(target_image, overlap, (opt.W, opt.H), opt.gobig_maximize)
+    opt.W, opt.H = input_image.size
+    target_W = opt.W * opt.gobig_scale
+    target_H = opt.H * opt.gobig_scale
+    if opt.gobig_realesrgan:
+        input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model, opt.esrgan_exe)
+    target_image = input_image.resize((target_W, target_H), get_resampling_mode())
+    slices, new_canvas_size = grid_slice(target_image, overlap, (opt.W, opt.H))
+    if opt.gobig_maximize == True:
+        # increase our final image size to use up blank space
+        target_image = input_image.resize(new_canvas_size, get_resampling_mode())
+        slices, new_canvas_size = grid_slice(target_image, overlap, (opt.W, opt.H))
+    input_image.close()
     # now we trigger a do_run for each slice
     betterslices = []
     slice_image = f'slice{opt.device_id}.png'
@@ -934,6 +941,7 @@ def main():
     # setup the model
     ckpt = settings.checkpoint # "./models/sd-v1-3-full-ema.ckpt"
     inf_config = "./configs/stable-diffusion/v1-inference.yaml"
+    # inf_config = "./optimizedSD/v1-inference.yaml"
     print(f'Loading the model and checkpoint ({ckpt})...')
     config = OmegaConf.load(f"{inf_config}")
     model = load_model_from_config(config, f"{ckpt}", verbose=False)
@@ -1033,12 +1041,14 @@ def main():
                     "gobig_realesrgan": settings.gobig_realesrgan,
                     "gobig_keep_slices": settings.gobig_keep_slices,
                     "esrgan_model": settings.esrgan_model,
+                    "esrgan_exe": settings.esrgan_exe,
                     "config": config,
                     "filetype": filetype,
                     "hide_metadata": settings.hide_metadata,
                     "quality": quality,
                     "device_id": device_id,
                     "method": settings.method,
+                    "settings_dir": settings.settings_dir,
                     "save_settings": settings.save_settings,
                 }
                 opt = SimpleNamespace(**opt)
