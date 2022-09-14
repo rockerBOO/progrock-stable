@@ -812,19 +812,17 @@ def do_gobig(gobig_init, device, model, opt):
     outpath = opt.outdir
     # get our render size for each slice, and our target size
     input_image = Image.open(gobig_init).convert('RGBA')
-    opt.W, opt.H = input_image.size
-    target_W = opt.W * opt.gobig_scale
-    target_H = opt.H * opt.gobig_scale
-    if opt.gobig_realesrgan:
-        input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model, opt.esrgan_exe)
-    target_image = input_image.resize((target_W, target_H), get_resampling_mode())
-    slices, new_canvas_size = grid_slice(target_image, overlap, (opt.W, opt.H))
-    if opt.gobig_maximize == True:
-        # increase our final image size to use up blank space
-        target_image = input_image.resize(new_canvas_size, get_resampling_mode())
-        slices, new_canvas_size = grid_slice(target_image, overlap, (opt.W, opt.H))
-    input_image.close()
-    # now we trigger a do_run for each slice
+    if opt.gobig_prescaled == False:
+        opt.W, opt.H = input_image.size
+        target_W = opt.W * opt.gobig_scale
+        target_H = opt.H * opt.gobig_scale
+        if opt.gobig_realesrgan:
+            input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model)
+        target_image = input_image.resize((target_W, target_H), get_resampling_mode()) #esrgan resizes 4x by default, so this brings us in line with our actual scale target
+    else:
+        #target_W, target_H = input_image.size
+        target_image = input_image
+    slices, target_image = grid_slice(target_image, overlap, (opt.W, opt.H), opt.gobig_maximize)    # now we trigger a do_run for each slice
     betterslices = []
     slice_image = f'slice{opt.device_id}.png'
     for count, chunk_w_coords in enumerate(slices):
