@@ -852,7 +852,7 @@ def do_gobig(gobig_init, device, model, opt):
         target_W = opt.W * opt.gobig_scale
         target_H = opt.H * opt.gobig_scale
         if opt.gobig_realesrgan:
-            input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model)
+            input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model, opt.esrgan_exe)
         target_image = input_image.resize((target_W, target_H), get_resampling_mode()) #esrgan resizes 4x by default, so this brings us in line with our actual scale target
     else:
         #target_W, target_H = input_image.size
