@@ -28,6 +28,7 @@
     "gobig_realesrgan": false, // optionally use RealESRGAN to handle initial resize
     "esrgan_model": "realesrgan-x4plus", // the model to use for esrgan upscaling
     "augment_prompt": "zoomed in view of", // prepended to the prompt for gobig sections (set to null if no augment wanted)
+    "gobig_cgs": null, // an alternate value to use for "scale" above, used for the individual sections of a gobig render
     // Generally, you can ignore most of the rest of this
     "method" : "k_lms", // sampling method to use. Options: "k_lms", "k_dpm_2_ancestral", "k_dpm_2", "k_heun", "k_euler_ancestral", "k_euler", "ddim"
     "eta" : 0.0, // currently does not seem to do anything
@@ -39,3 +40,18 @@
     "save_settings": false, // set to true if you want a settings file like this saved with every image
     "improve_composition": false // improve images larger than 512x512 by first rendering at 512x512 and then using that result as an init
 }
+// dynamic values:
+// prompt can contain words or phrases that will be randomly selected, like so:
+// "a <dog|cat|person> walking on the <beach|rooftop|path>"
+//
+// You can also randomly select certain other values in the same way.
+// Currently steps, scale, and eta are supported. Make sure you put your selections in quotes!
+// (I'm supporting eta here despite the fact that it does not seem to have any impact on output)
+// Example:
+// "steps": "<50|75|100|125>"
+//
+// Unique to prompts, you can also get more than one of the selections back.
+// In this example, two of the selections are used:
+// "a <^^2|lovely|unique|strong|miserable|wild> person perusing ArtDiffuser's instagram."
+// might return "a lovely wild person perusing ArtDiffuser's instagram."
+
