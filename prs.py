@@ -228,6 +228,9 @@ def do_run(device, model, opt):
     compositional_init = None
     target_w = opt.W
     target_h = opt.H
+    
+    opt.ddim_steps = int(dynamic_value(opt.ddim_steps)) if type(opt.ddim_steps) == str else opt.ddim_steps
+
     while render_left_to_do:
         if compositional_init != None:
             opt.init_image = compositional_init
@@ -261,7 +264,11 @@ def do_run(device, model, opt):
                     for n in trange(opt.n_iter, desc="Sampling"):
                         for prompts in tqdm(data, desc="data"):
                             uc = None
-                            if opt.scale != 1.0:
+                            #process dynamic values
+                            scale = float(dynamic_value(opt.scale)) if type(opt.scale) == str else opt.scale
+                            ddim_eta = float(dynamic_value(opt.ddim_eta)) if type(opt.ddim_eta) == str else opt.ddim_eta
+
+                            if scale != 1.0:
                                 uc = model.get_learned_conditioning(batch_size * [""])
 
                             # process the prompt for randomizers and dynamic values
@@ -281,7 +288,10 @@ def do_run(device, model, opt):
 
                             # save a settings file for this image
                             if opt.save_settings:
-                                save_settings(opt, prompts[0], grid_count)
+                                used = opt
+                                used.scale = scale
+                                used.ddim_eta = ddim_eta
+                                save_settings(used, prompts[0], grid_count)
 
                             # sub-prompt weighting used if more than 1
                             if len(weighted_subprompts) > 1:
@@ -308,16 +318,16 @@ def do_run(device, model, opt):
                                                                     batch_size=batch_size,
                                                                     shape=shape,
                                                                     verbose=False,
-                                                                    unconditional_guidance_scale=opt.scale,
+                                                                    unconditional_guidance_scale=scale,
                                                                     unconditional_conditioning=uc,
-                                                                    eta=opt.ddim_eta,
+                                                                    eta=ddim_eta,
                                                                     x_T=start_code)
                                     sigmas = None
                                 else:
                                     # encode (scaled latent)
                                     z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*batch_size).to(device))
                                     # decode it
-                                    samples_ddim = sampler.decode(z_enc, c, t_enc, unconditional_guidance_scale=opt.scale,
+                                    samples_ddim = sampler.decode(z_enc, c, t_enc, unconditional_guidance_scale=scale,
                                                             unconditional_conditioning=uc,)
 
                             else:
@@ -383,7 +393,7 @@ def do_run(device, model, opt):
                                 extra_args = {
                                     'conditions': (c,),
                                     'uncond': uc,
-                                    'cond_scale': opt.scale,
+                                    'cond_scale': scale,
                                 }
                                 samples_ddim = sampling_fn(
                                     model_k_guidance,
@@ -401,8 +411,8 @@ def do_run(device, model, opt):
                                 metadata.add_text("prompt", str(prompts))
                                 metadata.add_text("seed", str(opt.seed))
                                 metadata.add_text("steps", str(opt.ddim_steps))
-                                metadata.add_text("scale", str(opt.scale))
-                                metadata.add_text("ETA", str(opt.ddim_eta))
+                                metadata.add_text("scale", str(scale))
+                                metadata.add_text("ETA", str(ddim_eta))
                                 metadata.add_text("method", str(opt.method))
                                 metadata.add_text("init_image", str(opt.init_image))
                                 metadata.add_text("variance", str(opt.variance))
@@ -748,6 +758,7 @@ class Settings:
     gobig_overlap = 64
     gobig_realesrgan = False
     gobig_keep_slices = False
+    gobig_cgs = None
     augment_prompt = None
     esrgan_model = "realesrgan-x4plus"
     cool_down = 0.0
@@ -812,6 +823,8 @@ class Settings:
             self.gobig_realesrgan = (settings_file["gobig_realesrgan"])
         if is_json_key_present(settings_file, 'esrgan_model'):
             self.esrgan_model = (settings_file["esrgan_model"])
+        if is_json_key_present(settings_file, 'gobig_cgs'):
+            self.gobig_cgs = (settings_file["gobig_cgs"])
         if is_json_key_present(settings_file, 'augment_prompt'):
             self.augment_prompt = (settings_file["augment_prompt"])
         if is_json_key_present(settings_file, 'gobig_keep_slices'):
@@ -855,6 +868,7 @@ def save_settings(options, prompt, filenum):
         'gobig_realesrgan' : options.gobig_realesrgan,
         'gobig_keep_slices' : options.gobig_keep_slices,
         'esrgan_model': options.esrgan_model,
+        'gobig_cgs' : options.gobig_cgs,
         'augment_prompt': options.augment_prompt,
         'use_jpg' : "true" if options.filetype == ".jpg" else "false",
         'hide_metadata' : options.hide_metadata,
@@ -909,6 +923,7 @@ def do_gobig(gobig_init, device, model, opt):
         opt.n_iter = 1 # no point doing multiple iterations since only one will be used
         opt.improve_composition = False # don't want to do stretching and yet another init image during gobig
         opt.seed = opt.seed + 1
+        opt.scale = opt.gobig_cgs if opt.gobig_cgs != None else opt.scale
         if opt.augment_prompt != None:
             # now augment the prompt
             opt.prompt = opt.augment_prompt + " " + original_prompt
@@ -954,14 +969,7 @@ def do_gobig(gobig_init, device, model, opt):
 def main():
     print('\nPROG ROCK STABLE')
     print('----------------')
-
-    # rolling a d20 to see if I should pester you about supporting PRD.
-    # Apologies if this offends you. At least it's only on a critical miss, right?
-    d20 = random.randint(1, 20)
-    if d20 == 1:
-        print('Please consider supporting my Patreon. Thanks! https://is.gd/rVX6IH')
-    else:
-        print('')
+    print('')
 
     cl_args = parse_args()
 
@@ -1122,6 +1130,7 @@ def main():
                     "gobig_realesrgan": settings.gobig_realesrgan,
                     "gobig_keep_slices": settings.gobig_keep_slices,
                     "esrgan_model": settings.esrgan_model,
+                    "gobig_cgs": settings.gobig_cgs,
                     "augment_prompt": settings.augment_prompt,
                     "config": config,
                     "filetype": filetype,
