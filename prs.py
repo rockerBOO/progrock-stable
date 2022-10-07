@@ -287,7 +287,7 @@ def do_run(device, model, opt):
                             weighted_subprompts = split_weighted_subprompts(prompts[0], normalize_prompt_weights)
 
                             # save a settings file for this image
-                            if opt.save_settings:
+                            if opt.save_settings == True and opt.improve_composition == False:
                                 used = opt
                                 used.scale = scale
                                 used.ddim_eta = ddim_eta
@@ -426,6 +426,7 @@ def do_run(device, model, opt):
                                     shutil.copy2(progress_image, output_filename)
                                     print(f'\nOutput saved as "{output_filename}"\n')
                                     render_left_to_do = False
+                                    grid_count += 1
                                 else: #otherwise, we use this output as an init for another run
                                     compositional_init = progress_image
                                     opt.improve_composition = False
@@ -433,7 +434,6 @@ def do_run(device, model, opt):
                                     data = [batch_size * [opt.prompt]] # make sure we use the enhanced prompt instead of the original
                                     print('\nImprove Composition enabled! Re-rendering at the desired size.')
                                 output_image.close()
-                                grid_count += 1
                     toc = time.time()
     return output_filename
 
