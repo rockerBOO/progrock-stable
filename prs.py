@@ -91,11 +91,14 @@ def get_resampling_mode():
     except Exception as ex:
         return 1  # 'Lanczos' irrespective of version.
 
-def load_img(w, h, path):
+def load_img(w, h, path, opt):
     image = Image.open(path).convert("RGB")
     xw, xh = image.size
     if xw != w or xh != h:
+        if opt.resize_method == "realesrgan":
+            image = esrgan_resize(image, opt.device_id, opt.esrgan_model)
         image = image.resize((w, h), get_resampling_mode())
+        image.convert("RGB")
         print(f'Warning: Init image size ({xw}x{xh}) differs from target size ({w}x{h}).')
         print(f'         It will be resized (if using improved composition mode, this is expected)')
     image = np.array(image).astype(np.float32) / 255.0
@@ -214,12 +217,12 @@ def do_run(device, model, opt):
         else:
             sampler = DDIMSampler(model, device)
 
-    def img_to_latent(width, height, path: str) -> Tensor:
+    def img_to_latent(width, height, path: str, opt) -> Tensor:
         assert os.path.isfile(path)
         if device.type == "cuda":
-            image = load_img(width, height, path).to(device).half()
+            image = load_img(width, height, path, opt).to(device).half()
         else:
-            image = load_img(width, height, path).to(device)
+            image = load_img(width, height, path, opt).to(device)
         image = repeat(image, '1 ... -> b ...', b=batch_size)
         latent: Tensor = model.get_first_stage_encoding(model.encode_first_stage(image))  # move to latent space
         return latent
@@ -241,7 +244,7 @@ def do_run(device, model, opt):
             opt.W = 512
             opt.H = 512
         if opt.init_image is not None:
-            init_latent = img_to_latent(opt.W, opt.H, opt.init_image)
+            init_latent = img_to_latent(opt.W, opt.H, opt.init_image, opt)
             assert 0. <= opt.strength <= 1., 'can only work with strength in [0.0, 1.0]'
             t_enc = int(opt.strength * opt.ddim_steps)
         else:
@@ -751,6 +754,7 @@ class Settings:
     frozen_seed = False
     init_image = None
     init_strength = 0.5
+    resize_method = "basic"
     gobig = False
     gobig_init = None
     gobig_prescaled = False
@@ -807,6 +811,10 @@ class Settings:
             self.init_strength = (settings_file["init_strength"])
         if is_json_key_present(settings_file, 'init_image'):
             self.init_image = (settings_file["init_image"])
+        if is_json_key_present(settings_file, 'resize_method'):
+            self.resize_method = (settings_file["resize_method"])
+        if is_json_key_present(settings_file, 'gobig_realesrgan'):
+            print('\nThe "gobig_realesrgan" setting is deprecated, use "resize_method" instead.\n')
         if is_json_key_present(settings_file, 'gobig'):
             self.gobig = (settings_file["gobig"])
         if is_json_key_present(settings_file, 'gobig_init'):
@@ -819,8 +827,6 @@ class Settings:
             self.gobig_maximize = (settings_file["gobig_maximize"])
         if is_json_key_present(settings_file, 'gobig_overlap'):
             self.gobig_overlap = (settings_file["gobig_overlap"])
-        if is_json_key_present(settings_file, 'gobig_realesrgan'):
-            self.gobig_realesrgan = (settings_file["gobig_realesrgan"])
         if is_json_key_present(settings_file, 'esrgan_model'):
             self.esrgan_model = (settings_file["esrgan_model"])
         if is_json_key_present(settings_file, 'gobig_cgs'):
@@ -859,13 +865,13 @@ def save_settings(options, prompt, filenum):
         'variance' : options.variance,
         'init_image' : options.init_image,
         'init_strength' : 1.0 - options.strength,
+        'resize_method' : options.resize_method,
         'gobig' : options.gobig,
         'gobig_init' : options.gobig_init,
         'gobig_scale' : options.gobig_scale,
         'gobig_prescaled' : options.gobig_prescaled,
         'gobig_maximize' : options.gobig_maximize,
         'gobig_overlap' : options.gobig_overlap,
-        'gobig_realesrgan' : options.gobig_realesrgan,
         'gobig_keep_slices' : options.gobig_keep_slices,
         'esrgan_model': options.esrgan_model,
         'gobig_cgs' : options.gobig_cgs,
@@ -886,7 +892,7 @@ def esrgan_resize(input, id, esrgan_model='realesrgan-x4plus'):
             ['realesrgan-ncnn-vulkan', '-n', esrgan_model, '-i', '_esrgan_orig.png', '-o', '_esrgan_.png'],
             stdout=subprocess.PIPE
         ).stdout.decode('utf-8')
-        output = Image.open('_esrgan_.png').convert('RGBA')
+        output = Image.open('_esrgan_.png').convert('RGB')
         return output
     except Exception as e:
         print('ESRGAN resize failed. Make sure realesrgan-ncnn-vulkan is in your path (or in this directory)')
@@ -903,7 +909,7 @@ def do_gobig(gobig_init, device, model, opt):
         opt.W, opt.H = input_image.size
         target_W = opt.W * opt.gobig_scale
         target_H = opt.H * opt.gobig_scale
-        if opt.gobig_realesrgan:
+        if opt.resize_method == "realesrgan":
             input_image = esrgan_resize(input_image, opt.device_id, opt.esrgan_model)
         target_image = input_image.resize((target_W, target_H), get_resampling_mode()) #esrgan resizes 4x by default, so this brings us in line with our actual scale target
     else:
@@ -1121,13 +1127,13 @@ def main():
                     "precision": "autocast",
                     "init_image": settings.init_image,
                     "strength": 1.0 - settings.init_strength,
+                    "resize_method": settings.resize_method,
                     "gobig": settings.gobig,
                     "gobig_init": settings.gobig_init,
                     "gobig_scale": settings.gobig_scale,
                     "gobig_prescaled": settings.gobig_prescaled,
                     "gobig_maximize": settings.gobig_maximize,
                     "gobig_overlap": settings.gobig_overlap,
-                    "gobig_realesrgan": settings.gobig_realesrgan,
                     "gobig_keep_slices": settings.gobig_keep_slices,
                     "esrgan_model": settings.esrgan_model,
                     "gobig_cgs": settings.gobig_cgs,

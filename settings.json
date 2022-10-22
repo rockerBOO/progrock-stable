@@ -14,6 +14,7 @@
     "n_batches" : 1, // Number of overall batches of images to make in this run (seed changes every batch)
     "n_iter" : 1, // number of images to make within a batch (seed remains the same for each iteration)
     "variance" : 0.0, // Add a slight amount of extra random noise to create subtle variations (useful when combined with n_iter)
+    "resize_method" : "basic", // Options are "basic" or "realesrgan" (see README for more info on realesrgan)
     // Init image stuff
     "init_image": null, // the file to use for a starting point (leave as null for no init). will be resized to match width/height above
     "init_strength": 0.62, // how strongly the init should be applied (essentially skip_steps)
@@ -25,7 +26,7 @@
     "gobig_maximize": false, // auto-extend go_big into otherwise wasted space (do not use with gobig_prescaled)
     "gobig_overlap": 64, // number of pixels to blend against other areas in go_big
     "gobig_keep_slices": false, // optionally keep the individual slice images
-    "gobig_realesrgan": false, // optionally use RealESRGAN to handle initial resize
+    "gobig_realesrgan": false, // deprecated, use "resize_method" of "realesrgan"
     "esrgan_model": "realesrgan-x4plus", // the model to use for esrgan upscaling
     "augment_prompt": "zoomed in view of", // prepended to the prompt for gobig sections (set to null if no augment wanted)
     "gobig_cgs": null, // an alternate value to use for "scale" above, used for the individual sections of a gobig render
@@ -34,7 +35,7 @@
     "eta" : 0.0, // currently does not seem to do anything
     "from_file": null, // load prompts from this file instead of using a single prompt. Each prompt is rendered n_batches times
     "cool_down": 0.0, // number of seconds to pause between images, to keep GPU cool
-    "checkpoint": "./models/sd-v1-4.ckpt",
+    "checkpoint": "./models/sd.ckpt",
     "use_jpg": false, // set this to save your output in JPG format to save space
     "hide_metadata": false, // set to true if you don"t want your prompt and seed in the PNG output metadata
     "save_settings": false, // set to true if you want a settings file like this saved with every image
