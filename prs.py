@@ -309,8 +309,15 @@ def do_run(device, model, opt):
                             if len(weighted_subprompts) > 1:
                                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
                                 for i in range(0, len(weighted_subprompts)):
-                                    # note if alpha negative, it functions same as torch.sub
-                                    c = torch.add(c, model.get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                                    if weighted_subprompts[i][1] < 0:
+                                        uc = torch.zeros_like(uc)
+                                        break
+                                for i in range(0, len(weighted_subprompts)):
+                                    tensor = model.get_learned_conditioning(weighted_subprompts[i][0])
+                                    if weighted_subprompts[i][1] > 0:
+                                        c = torch.add(c, tensor, alpha=weighted_subprompts[i][1])
+                                    else:
+                                        uc = torch.add(uc, tensor, alpha=-weighted_subprompts[i][1])
                             else: # just behave like usual
                                 c = model.get_learned_conditioning(prompts)
                             

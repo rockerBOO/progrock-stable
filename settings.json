@@ -26,7 +26,6 @@
     "gobig_maximize": false, // auto-extend go_big into otherwise wasted space (do not use with gobig_prescaled)
     "gobig_overlap": 64, // number of pixels to blend against other areas in go_big
     "gobig_keep_slices": false, // optionally keep the individual slice images
-    "gobig_realesrgan": false, // deprecated, use "resize_method" of "realesrgan"
     "esrgan_model": "realesrgan-x4plus", // the model to use for esrgan upscaling
     "augment_prompt": "zoomed in view of", // prepended to the prompt for gobig sections (set to null if no augment wanted)
     "gobig_cgs": null, // an alternate value to use for "scale" above, used for the individual sections of a gobig render
