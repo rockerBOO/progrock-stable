@@ -31,7 +31,7 @@ conda activate prs
 ```
 
 ## Download Stable Diffusion Weights
-Download the [Stable Diffusion weights](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original) "sd-v1-4.ckpt", and place it in the `models` directory
+Download the latest [Stable Diffusion weights](https://huggingface.co/runwayml/stable-diffusion-v1-5) - download whichever checkpoint is appropriate for your needs, rename it to "sd.ckpt", and place it in the `models` subdirectory
 
 Run prs to make sure everything worked!
 ```
@@ -104,7 +104,7 @@ python prs.py --gobig --gobig_init "init_images/myfile.png"
 There are a few settings you can tweak to improve your results:
 - First and foremost is init_strength. This setting determines how much of the original image should be retained, and thus how many steps to skip in the render process. I recommend a number between 0.55 and 0.75, and you will need to experiment to find the perfect setting for your image.
 
-- The second is to use [RealESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) to handle the initial resizing the starting image. To do this, install RealESRGAN and make sure it is in your path, then set "gobig_realesrgan" to "true" in your settings. This will begin your process with a much cleaner image.
+- The second is to use [RealESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) to handle the initial resizing the starting image. To do this, install RealESRGAN and make sure it is in your path, then set "resize_method" to "realesrgan" in your settings. This will begin your process with a much cleaner image.
 
 - Lastly, consider tweaking the prompt from your original image to one that focuses more on texture and detail. Keep in mind that each section of the image will use the prompt, so if the image you are upscaling has a singular subject in one area (say, a bird), as it re-renders each section if "bird" is in the prompt it may try to add a bird to those smaller sections, resulting in an upscaled image that is not what you wanted.
 
