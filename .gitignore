@@ -5,5 +5,11 @@ _esrgan_/
 __pycache__/
 *.egg-info/
 out/
+
+# Model checkpoints
 *.ckpt
-settings/user_settings.json
+*.safetensors
+*.pt
+
+# User settings
+boo_settings.json
