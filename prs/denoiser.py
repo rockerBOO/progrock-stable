@@ -28,6 +28,7 @@ class KCFGDenoiser(torch.nn.Module):
         cond = torch.sum(torch.stack(conditions), dim=0) / conditions_len
         return uncond + (cond - uncond) * cond_scale
 
+
 class CFGDenoiser(torch.nn.Module):
     def __init__(self, model):
         super().__init__()

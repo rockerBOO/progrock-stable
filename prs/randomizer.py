@@ -12,7 +12,7 @@ def randomizer(category):
 
 
 # replace anything surrounded by underscores with a random entry from the matching text file
-def randomize_prompt(prompt):
+def randomize_prompt(prompt: str) -> str:
     while "_" in prompt:
         start = prompt.index("_")
         end = prompt.index("_", start + 1)

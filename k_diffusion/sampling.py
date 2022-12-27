@@ -2,6 +2,8 @@ import math
 
 from scipy import integrate
 import torch
+
+from torch import Tensor
 from torch import nn
 from torchdiffeq import odeint
 from tqdm.auto import trange, tqdm
@@ -13,7 +15,11 @@ def append_zero(x):
     return torch.cat([x, x.new_zeros([1])])
 
 
-def get_sigmas_karras(n, sigma_min, sigma_max, rho=7., device='cpu'):
+from torch.types import (
+     _device, 
+)
+
+def get_sigmas_karras(n, sigma_min, sigma_max, rho=7., device=_device) -> Tensor:
     """Constructs the noise schedule of Karras et al. (2022)."""
     ramp = torch.linspace(0, 1, n)
     min_inv_rho = sigma_min ** (1 / rho)
@@ -22,13 +28,13 @@ def get_sigmas_karras(n, sigma_min, sigma_max, rho=7., device='cpu'):
     return append_zero(sigmas).to(device)
 
 
-def get_sigmas_exponential(n, sigma_min, sigma_max, device='cpu'):
+def get_sigmas_exponential(n, sigma_min, sigma_max, device='cpu') -> Tensor:
     """Constructs an exponential noise schedule."""
     sigmas = torch.linspace(math.log(sigma_max), math.log(sigma_min), n, device=device).exp()
     return append_zero(sigmas)
 
 
-def get_sigmas_vp(n, beta_d=19.9, beta_min=0.1, eps_s=1e-3, device='cpu'):
+def get_sigmas_vp(n, beta_d=19.9, beta_min=0.1, eps_s=1e-3, device='cpu') -> Tensor:
     """Constructs a continuous VP noise schedule."""
     t = torch.linspace(1, eps_s, n, device=device)
     sigmas = torch.sqrt(torch.exp(beta_d * t ** 2 / 2 + beta_min * t) - 1)
@@ -469,7 +475,7 @@ def sample_dpmpp_2s_ancestral(model, x, sigmas, extra_args=None, callback=None, 
 
 
 @torch.no_grad()
-def sample_dpmpp_2m(model, x, sigmas, extra_args=None, callback=None, disable=None):
+def sample_dpmpp_2m(model, x, sigmas, extra_args=None, callback=None, disable=None) -> Tensor:
     """DPM-Solver++(2M)."""
     extra_args = {} if extra_args is None else extra_args
     s_in = x.new_ones([x.shape[0]])
