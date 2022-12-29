@@ -203,6 +203,8 @@ def render_x(
     else:  # just behave like usual
         c = model.get_learned_conditioning(prompts)
 
+    start_code = randn
+
     if opt.variance != 0.0:
         # add a little extra random noise to get varying output with same seed
         base_x = randn  # torch.randn(rand_size, device=device) * sigmas[0]
@@ -248,7 +250,7 @@ def sample(
         assert os.path.isfile(path)
 
         if device.type == "cuda":
-            image = load_img(width, height, path, opt).to(device).half()
+            image = load_img(width, height, path, opt).to(device)
         else:
             image = load_img(width, height, path, opt).to(device)
 
@@ -266,7 +268,7 @@ def sample(
     else:
         init_latent = None
         # FIXME: should this default to 1? 0?
-        t_enc = 1
+        t_enc = 0
 
     if opt.method in NOT_K_DIFF_SAMPLERS:
         if opt.method == "plms":

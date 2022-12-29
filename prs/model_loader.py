@@ -3,8 +3,13 @@ import torch
 from safetensors.torch import load_file
 
 from ldm.util import instantiate_from_config
+from torch.types import (
+     _device, 
+)
+
 # from ldm.models.diffusion.ddim import DDIMSampler
 # from ldm.models.diffusion.plms import PLMSSampler
+
 
 def chunk(it, size):
     it = iter(it)
@@ -71,3 +76,30 @@ def load_model_from_config(config, ckpt, verbose=False):
         print(u)
 
     return model
+
+
+# VAE
+
+import os
+
+
+def load_vae(model: torch.nn.Module, device: _device, vae_file, map_location):
+    assert os.path.isfile(vae_file), f"VAE file doesn't exist: {vae_file}"
+    print(f"Loading VAE weights from: {vae_file}")
+    vae_ckpt = torch.load(vae_file, map_location=map_location)
+    state_dict = get_state_dict_from_checkpoint(vae_ckpt)
+    vae_dict_1 = {k: v for k, v in state_dict.items() if k[0:4] != "loss"}
+    load_dict_to_device(model, device, vae_dict_1)
+
+
+def load_dict_to_device(model: torch.nn.Module, device: _device, vae_dict):
+    model.load_state_dict(vae_dict, strict=False)
+    model.to(device)
+
+def load_embedding(model: torch.nn.Module, device: _device, embed_file):
+    assert os.path.isfile(embed_file), f"Embedding file doesn't exist: {embed_file}"
+    print(f"Loading Embedding from: {embed_file}")
+    embed_ckpt = torch.load(embed_file, map_location="cpu")
+    state_dict = get_state_dict_from_checkpoint(embed_ckpt)
+    embed_dict_1 = {k: v for k, v in state_dict.items() if k[0:4] != "loss"}
+    load_dict_to_device(model, device, embed_dict_1)

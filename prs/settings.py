@@ -1,6 +1,7 @@
 from prs.utils import is_json_key_present
 import random
 from json import dump
+from typing import Union
 
 class Settings:
     prompt = "A druid in his shop, selling potions and trinkets, fantasy painting by raphael lacoste and craig mullins"
@@ -15,7 +16,7 @@ class Settings:
     scale = 5.0
     dyn = None
     from_file = None
-    seed = "random"
+    seed: Union[str, int] = "random"
     variance = 0.0
     frozen_seed = False
     zoom_in = False
@@ -23,10 +24,10 @@ class Settings:
     zoom_in_depth = 2
     zoom_in_x = False
     zoom_in_y = False
-    zoom_in_strength = 0.5
-    zoom_in_steps = False
+    zoom_in_strength: float = 0.5
+    zoom_in_steps: Union[int, bool] = False
     init_image = None
-    init_strength = 0.5
+    init_strength: float = 0.5
     resize_method = "basic"
     gobig = False
     gobig_init = None
@@ -38,9 +39,9 @@ class Settings:
     gobig_cgs = None
     augment_prompt = None
     esrgan_model = "realesrgan-x4plus"
-    cool_down = 0.0
+    cool_down: float = 0.0
     checkpoint = "./models/sd-v1-4.ckpt"
-    use_jpg = False
+    use_jpg: bool = False
     hide_metadata = False
     method = "k_lms"
     save_settings = False
@@ -156,24 +157,24 @@ def save_settings(prompt, filenum, options):
         "seed": options.seed,
         "variance": options.variance,
         "init_image": options.init_image,
-        "zoom_in": options.zoom_in,
-        "zoom_in_amount": options.zoom_in_amount,
-        "zoom_in_depth": options.zoom_in_depth,
-        "zoom_in_y": options.zoom_in_y,
-        "zoom_in_x": options.zoom_in_x,
-        "zoom_in_y": options.zoom_in_y,
-        "zoom_in_steps": options.zoom_in_steps,
+        # "zoom_in": options.zoom_in,
+        # "zoom_in_amount": options.zoom_in_amount,
+        # "zoom_in_depth": options.zoom_in_depth,
+        # "zoom_in_y": options.zoom_in_y,
+        # "zoom_in_x": options.zoom_in_x,
+        # "zoom_in_y": options.zoom_in_y,
+        # "zoom_in_steps": options.zoom_in_steps,
         "init_strength": 1.0 - options.strength,
         "resize_method": options.resize_method,
-        "gobig": options.gobig,
-        "gobig_init": options.gobig_init,
-        "gobig_scale": options.gobig_scale,
-        "gobig_prescaled": options.gobig_prescaled,
-        "gobig_maximize": options.gobig_maximize,
-        "gobig_overlap": options.gobig_overlap,
-        "gobig_keep_slices": options.gobig_keep_slices,
-        "esrgan_model": options.esrgan_model,
-        "gobig_cgs": options.gobig_cgs,
+        # "gobig": options.gobig,
+        # "gobig_init": options.gobig_init,
+        # "gobig_scale": options.gobig_scale,
+        # "gobig_prescaled": options.gobig_prescaled,
+        # "gobig_maximize": options.gobig_maximize,
+        # "gobig_overlap": options.gobig_overlap,
+        # "gobig_keep_slices": options.gobig_keep_slices,
+        # "esrgan_model": options.esrgan_model,
+        # "gobig_cgs": options.gobig_cgs,
         "augment_prompt": options.augment_prompt,
         "use_jpg": "true" if options.filetype == ".jpg" else "false",
         "hide_metadata": options.hide_metadata,
@@ -186,4 +187,73 @@ def save_settings(prompt, filenum, options):
         encoding="utf-8",
     ) as f:
         dump(setting_list, f, ensure_ascii=False, indent=4)
+
+from torch.types import _device
+
+def settings_to_batch_opt(
+    prompt: str,
+    outdir: str,
+    device: _device,
+    quality: float,
+    filetype: str,
+    i: int,
+    config,
+    settings: Settings,
+):
+
+    # pack up our settings into a simple namespace for the renderer
+    opt = {
+        "prompt": prompt,
+        "checkpoint": settings.checkpoint,
+        "batch_name": settings.batch_name,
+        "outdir": outdir,
+        "ddim_steps": settings.steps,
+        "ddim_eta": settings.eta,
+        "n_iter": settings.n_iter,
+        "W": settings.width,
+        "H": settings.height,
+        "C": 4,
+        "f": 8,
+        "scale": settings.scale,
+        "dyn": settings.dyn,
+        "seed": settings.seed + i if isinstance(settings.seed, int) else settings.seed,
+        "variance": settings.variance,
+        "variance_seed": settings.seed + i + 1
+        if isinstance(settings.seed, int)
+        else settings.seed,
+        "precision": "autocast",
+        # Zoom in
+        # "zoom_in": settings.zoom_in,
+        # "zoom_in_amount": settings.zoom_in_amount,
+        # "zoom_in_x": settings.zoom_in_x,
+        # "zoom_in_y": settings.zoom_in_y,
+        # "zoom_in_strength": settings.zoom_in_strength,
+        # "zoom_in_depth": settings.zoom_in_depth,
+        # "zoom_in_steps": settings.zoom_in_steps,
+        "init_image": settings.init_image,
+        "strength": 1.0 - settings.init_strength,
+        "resize_method": settings.resize_method,
+        # "gobig": settings.gobig,
+        # "gobig_init": settings.gobig_init,
+        # "gobig_scale": settings.gobig_scale,
+        # "gobig_prescaled": settings.gobig_prescaled,
+        # "gobig_maximize": settings.gobig_maximize,
+        # "gobig_overlap": settings.gobig_overlap,
+        # "gobig_keep_slices": settings.gobig_keep_slices,
+        "esrgan_model": settings.esrgan_model,
+        # "gobig_cgs": settings.gobig_cgs,
+        "augment_prompt": settings.augment_prompt,
+        "config": config,
+        "filetype": filetype,
+        "hide_metadata": settings.hide_metadata,
+        "quality": quality,
+        "device_id": to_device_id(device),
+        "method": settings.method,
+        "save_settings": settings.save_settings,
+        "improve_composition": settings.improve_composition,
+        "skip_randomize": True,
+    }
+
+    opt = SimpleNamespace(**opt)
+    return opt
 
